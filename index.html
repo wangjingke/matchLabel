@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>MATCH Salvia Label</title>
+    <script src="./js/papaparse.min.js"></script>
+</head>
+
+<body>
+<h1 align="center">MATCH Saliva Label</h1>
+<p></p>
+<p align="center">
+    For the conservation of labels, the first page may not have full 85 labels.<br />
+    How many labels to be left empty at the beginning this time?
+    <input type="number" id="empty"  min="0" max="84" value="0"/><br />
+</p>
+
+<form>
+    <div align="center">
+        <fieldset style="width:500px">
+            <legend>File upload</legend>
+            <p>
+                Please select the file that contains dyad ID and wave:<br />
+                <input type="file" id="rawData" />
+            </p>
+            <p>
+                <input type="button" id="decodeButton" value="Process" onclick="process(inputFile = 'rawData')"/>
+            </p>
+        </fieldset>
+    </div>
+</form>
+
+<script type = "text/javascript">
+function process(inputFile) {
+    var empty = document.getElementById("empty").value;
+    var fileUpload = document.getElementById(inputFile);
+    var reader = new FileReader();
+    reader.readAsText(fileUpload.files[0]);
+
+    reader.onload = (function(f) {
+        return function(event) {
+            var csv  = event.target.result;
+            var data = Papa.parse(csv);
+            result = generateLabel(data.data);
+            download(contentToDownload = result, originalFileName = f.name);
+        }
+    })(fileUpload.files[0]) // wrapping onload function in another function, so the closure gives access to file name
+
+    function generateLabel(input) {
+        var label = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "X", "Y", "Z"]
+        var output = ["label"];
+        if (empty>0) {
+            for (var i = 0; i < empty; i++) {output.push("dummy"+i)}
+        }
+
+        var dyadID = "";
+        for (var i = 0; i < input.length; i++) {
+            var inputX = input[i];
+            var outputX = [];
+            if (/[0-9]/.test(inputX[0])) {
+                dyadID = inputX[0];
+                while (dyadID.length<3) {dyadID = "0"+dyadID}
+                // mother labels
+                motherX = label.map(function(item) {return "11"+dyadID+"W"+inputX[1]+"-"+item});
+                childX = label.map(function(item) {return "12"+dyadID+"W"+inputX[1]+"-"+item});
+                for (var j = 0; j < motherX.length; j++) {
+                    outputX.push(motherX[j]);
+                    outputX.push(motherX[j]);
+                }
+                for (var j = 0; j < childX.length; j++) {
+                    outputX.push(childX[j]);
+                    outputX.push(childX[j]);
+                }
+            }
+            if (outputX.length > 0) {
+                for (var k = 0; k < outputX.length; k++) {
+                    output.push(outputX[k]);
+                }
+            }
+        }
+        return output;
+    }
+
+    function download(contentToDownload, originalFileName) {
+        var newFileName = originalFileName.split(".csv")[0]+"_labels.csv";
+        var content = "data:text/csv;charset=utf-8,";
+        //wrap each item with quotes, then join
+        content = content + contentToDownload.map(function(item) {return '"' + item + '"\n'}).join("");
+
+        var encodedUri = encodeURI(content);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", newFileName);
+        document.body.appendChild(link); // Required for FireFox
+        link.click()
+    }
+}
+
+</script>
+
+
+</body>
+</html>
